@@ -105,11 +105,13 @@ def make_answer(question, result):
     if not result:
         return "No matching results were found."
 
+    #Orders in year
     if "orders in 2013" in q:
         total = result[0].get("total_orders", 0)
         return f"There were {total:,} orders created in 2013."
 
-    if "total spending" in q:
+    #Total spending
+    if "total" in q and "spending" in q:
         total = (
             result[0].get("total_spending")
             or result[0].get("totalSpending")
@@ -118,24 +120,28 @@ def make_answer(question, result):
         )
         return f"The total spending is ${total:,.2f}."
 
+    #Top suppliers
     if "top" in q and "supplier" in q:
         lines = [
-            f"{i+1}. {r['_id']} — ${r['total_spending']:,.2f}"
+            f"{i+1}. {r.get('_id', 'Unknown')} — ${r.get('total_spending', 0):,.2f}"
             for i, r in enumerate(result)
         ]
         return "The top suppliers by spending are:\n" + "\n".join(lines)
 
+    #Frequent items
     if "frequent item" in q or "common item" in q:
         lines = [
-            f"{i+1}. {r['_id']} — {r['count']} orders"
+            f"{i+1}. {r.get('_id', 'Unknown')} — {r.get('count', 0)} orders"
             for i, r in enumerate(result)
         ]
         return "The most frequent ordered items are:\n" + "\n".join(lines)
 
+    #Number of orders
     if "how many orders" in q or "number of orders" in q:
         total_orders = result[0].get("total_orders", 0)
         return f"There are {total_orders:,} orders in the dataset."
 
+    #Quarter analysis
     if "quarter" in q:
         lines = []
         for i, r in enumerate(result):
@@ -143,6 +149,36 @@ def make_answer(question, result):
             total = r.get("total_spending", 0)
             lines.append(f"{i+1}. {period} — ${total:,.2f}")
         return "The top spending quarters are:\n" + "\n".join(lines)
+
+    #Department (LLM case)
+    if "department" in q:
+     lines = []
+    for i, r in enumerate(result):
+        dept = r.get("_id", "Unknown")
+        total = (
+            r.get("total_spending")
+            or r.get("totalSpending")
+            or r.get("total")
+            or 0
+        )
+        lines.append(f"{i+1}. {dept} — ${total:,.2f}")
+
+    return "Departments by spending:\n" + "\n".join(lines)
+
+    #DEFAULT (for any new LLM query)
+    first = result[0]
+
+    if isinstance(first, dict):
+        lines = []
+        for key, value in first.items():
+            if key == "_id":
+                lines.append(f"Category: {value}")
+            elif isinstance(value, (int, float)):
+                lines.append(f"{key}: {value:,.2f}")
+            else:
+                lines.append(f"{key}: {value}")
+
+        return "Here is the result:\n" + "\n".join(lines)
 
     return f"I found {len(result)} result(s)."
 
